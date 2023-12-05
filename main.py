@@ -6,19 +6,23 @@ intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-with open('Token.txt', 'r') as f:
-    TOKEN = f.read()
+with open('settings.txt', 'r') as f:
+    data = f.readlines()
+for line in range(len(data)):
+    data[line] = data[line].replace('\n', '')
 
-with open('SEToken.txt', 'r') as f:
-    SETOKEN = f.read()
+settings = {}
 
-with open('channel.txt', 'r') as f:
-    serverID,channelID = list(map(int,f.readlines()))
+for line in data:
+    try:
+        settings[line[:line.find('=')]] = int(line[line.find('=')+1:])
+    except:
+        settings[line[:line.find('=')]] = line[line.find('=')+1:]
 
-with open('url.txt', 'r') as f:
-    url,port = f.read().split(':')
+settings['url'],settings['port']=settings['url'].split(':')
 
-api = VRageAPI(url=f'http://{url}:{port}', token=SETOKEN)
+api = VRageAPI(
+    url=f'http://{settings["url"]}:{settings["port"]}', token=settings["SETokenID"])
 
 
 key = '/se'
@@ -44,10 +48,10 @@ def is_allowed(authorID,req_permission_level):
 
 @client.event
 async def on_message(message):
-    if message.author == client.user or message.channel.id != channelID:
+    if message.author == client.user or message.channel.id != settings["channelID"]:
         return
 
-@tree.command(name = "players", description = "Player List", guild=discord.Object(id=serverID))
+@tree.command(name = "players", description = "Player List", guild=discord.Object(id=settings["serverID"]))
 async def players(interaction:discord.ui.text_input):
     players = api.get_players()['data']['Players']
     online_players = {}
@@ -66,7 +70,7 @@ async def players(interaction:discord.ui.text_input):
     await interaction.response.send_message(embed=discord.Embed(title='Players', description=sendmessage))
 
 
-@tree.command(name="grids", description="Grid List", guild=discord.Object(id=serverID))
+@tree.command(name="grids", description="Grid List", guild=discord.Object(id=settings["serverID"]))
 async def grids(interaction:discord.ui.text_input):
     grids = api.get_grids()['data']['Grids']
 
@@ -106,11 +110,11 @@ async def ch_pr():
                     current_players.append(player['DisplayName'])
                     if player['DisplayName'] not in player_names:
                         player_names.append(player['DisplayName'])
-                        await client.get_channel(channelID).send(embed=discord.Embed(title='Join',description=f'{player["DisplayName"]} has joined'))
+                        await client.get_channel(settings['channelID']).send(embed=discord.Embed(title='Join',description=f'{player["DisplayName"]} has joined'))
 
             for name in player_names:
                 if name not in current_players:
-                    await client.get_channel(channelID).send(embed=discord.Embed(title='Disconnect', description=f'{name} has disconnected'))
+                    await client.get_channel(settings['channelID']).send(embed=discord.Embed(title='Disconnect', description=f'{name} has disconnected'))
                     player_names.remove(name)
                     
             presence = f'{online_players} Players Online'
@@ -132,7 +136,7 @@ async def send_server_chat():
                 if message not in message_history:
                     message_history.append(message)
                     sendable_message = f'{message["DisplayName"]}: {message["Content"]}'
-                    await client.get_channel(channelID).send(sendable_message)
+                    await client.get_channel(settings["channelID"]).send(sendable_message)
         except:
             pass
 
@@ -140,9 +144,9 @@ async def send_server_chat():
 
 @client.event
 async def on_ready():
-    await tree.sync(guild=discord.Object(id=serverID))
+    await tree.sync(guild=discord.Object(id=settings['serverID']))
     client.loop.create_task(send_server_chat())
     client.loop.create_task(ch_pr())
     print("Ready!")
 
-client.run(TOKEN)
+client.run(settings['DiscordToken'])
