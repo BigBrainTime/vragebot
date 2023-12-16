@@ -35,11 +35,15 @@ levels = {
     5: 'Owner'
 }
 
-user_permissions = {
-    371422034544295937:4,#Rogue
-    311701516652380160:4,#Lucky
-    342001099190042626:5 #Me
-}
+with open('permissions.txt', 'r') as f:
+    pdata = f.readlines()
+    pdata.remove('#discordID:PermissionLevel\n')
+for line in range(len(pdata)):
+    pdata[line] = pdata[line].replace('\n', '')
+user_permissions = {}
+for line in pdata:
+    user_permissions[int(line.split(':')[0])] = int(line.split(':')[1])
+print(user_permissions)
 
 def is_allowed(authorID,req_permission_level):
     if authorID in user_permissions:
