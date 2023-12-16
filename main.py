@@ -21,9 +21,9 @@ for line in data:
 
 settings['url'],settings['port']=settings['url'].split(':')
 
-api = VRageAPI(
-    url=f'http://{settings["url"]}:{settings["port"]}', token=settings["SETokenID"])
+api = VRageAPI(url=f'http://{settings["url"]}:{settings["port"]}', token=settings["SETokenID"])
 
+print(settings)
 
 key = '/se'
 levels = {
@@ -50,6 +50,7 @@ def is_allowed(authorID,req_permission_level):
 async def on_message(message):
     if message.author == client.user or message.channel.id != settings["channelID"]:
         return
+    api.send_chat_message(f'{message.author}: {message.content}')
 
 @tree.command(name = "players", description = "Player List", guild=discord.Object(id=settings["serverID"]))
 async def players(interaction:discord.ui.text_input):
@@ -127,13 +128,14 @@ async def send_server_chat():
     global activities
 
     await client.wait_until_ready()
+    
     message_history = api.get_chat()['data']['Messages']
-
+    
     while not client.is_closed():
         try:
             new_messages = api.get_chat()['data']['Messages']
             for message in new_messages:
-                if message not in message_history:
+                if message not in message_history and message["DisplayName"] != 'Good.bot':
                     message_history.append(message)
                     sendable_message = f'{message["DisplayName"]}: {message["Content"]}'
                     await client.get_channel(settings["channelID"]).send(sendable_message)
