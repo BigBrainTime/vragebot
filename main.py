@@ -107,6 +107,12 @@ async def ch_pr():
     while not client.is_closed():
         try:
             players = api.get_players()['data']['Players']
+            presence = None
+
+        except:
+            presence = 'Server Offline'
+
+        if presence != 'Server Offline':
             online_players = 0
             current_players = []
             for player in players:
@@ -115,16 +121,15 @@ async def ch_pr():
                     current_players.append(player['DisplayName'])
                     if player['DisplayName'] not in player_names:
                         player_names.append(player['DisplayName'])
-                        await client.get_channel(settings['channelID']).send(embed=discord.Embed(title='Join',description=f'{player["DisplayName"]} has joined'))
+                        await client.get_channel(settings['channelID']).send(embed=discord.Embed(color=0x00ff00,description=f'{player["DisplayName"]} has joined'))
 
             for name in player_names:
                 if name not in current_players:
-                    await client.get_channel(settings['channelID']).send(embed=discord.Embed(title='Disconnect', description=f'{name} has disconnected'))
+                    await client.get_channel(settings['channelID']).send(embed=discord.Embed(color=0xff0000, description=f'{name} has disconnected'))
                     player_names.remove(name)
+                    online_players -= 1
                     
             presence = f'{online_players} Players Online'
-        except:
-            presence = 'Server Offline'
         await client.change_presence(activity=discord.Game(name=presence))
         await asyncio.sleep(60)
 
