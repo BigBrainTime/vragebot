@@ -1,6 +1,7 @@
 from vrage_api.vrage_api import VRageAPI
 import discord, asyncio
 from discord import app_commands
+from math import ceil
 
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
@@ -56,6 +57,35 @@ async def on_message(message):
         return
     api.send_chat_message(f'{message.author}: {message.content}')
 
+@tree.command(name = "stop", description = "stop_server", guild=discord.Object(id=settings["serverID"]))
+async def stop(interaction:discord.ui.text_input):
+    if is_allowed(interaction.user.id,3):
+        api.stop_server()
+        await interaction.response.send_message(embed=discord.Embed(title='Stop', description='Server Stopped - Contact Owner for reboot'))
+    else:
+        await interaction.response.send_message(embed=discord.Embed(title='Stop', description='Acces Denied'))
+
+
+@tree.command(name="clear_floating", description="Clear All Floating Objects", guild=discord.Object(id=settings["serverID"]))
+async def clear_objects(interaction: discord.ui.text_input):
+    if not is_allowed(interaction.user.id, 3):
+        return await interaction.response.send_message(embed=discord.Embed(title='Clear Objects', description='Acces Denied'))
+    
+    await interaction.response.send_message(embed=discord.Embed(title='Clear Objects', description='Please Wait'))
+    objects = api.get_floating_objects()['data']['FloatingObjects']
+    if len(objects) == 0:
+        return await interaction.edit_original_response(embed=discord.Embed(title='Clear Objects', description=f'No Objects To Clear'))
+    for delay in (60,50,40,30,20,10):
+        api.send_chat_message(f'CLEARING ALL FLOATING OBJECTS IN {delay} SECONDS!')
+        await interaction.edit_original_response(embed=discord.Embed(title='Clear Objects', description=f'Clearing In {delay} Seconds'))
+        await asyncio.sleep(10)
+    api.send_chat_message(f'CLEARING ALL FLOATING OBJECTS NOW!')
+    await interaction.edit_original_response(embed=discord.Embed(title='Clear Objects', description=f'Clearing Now'))
+    for object in objects:
+        api.delete_floating_object(object['EntityId'])
+    await interaction.edit_original_response(embed=discord.Embed(title='Clear Objects', description=f'{len(objects)} Objects Cleared'))
+    
+
 @tree.command(name = "players", description = "Player List", guild=discord.Object(id=settings["serverID"]))
 async def players(interaction:discord.ui.text_input):
     players = api.get_players()['data']['Players']
@@ -74,13 +104,17 @@ async def players(interaction:discord.ui.text_input):
 
     await interaction.response.send_message(embed=discord.Embed(title='Players', description=sendmessage))
 
-
+gridsperpage = 5
 @tree.command(name="grids", description="Grid List", guild=discord.Object(id=settings["serverID"]))
-async def grids(interaction:discord.ui.text_input):
+async def grids(interaction:discord.ui.text_input,page:int):
+    await interaction.response.send_message(embed=discord.Embed(title='Grids', description='Please Wait'))
     grids = api.get_grids()['data']['Grids']
-
     usable_grid_data ={}
-    for grid in grids:
+    if page > ceil(len(grids)/gridsperpage):
+        page = ceil(len(grids)/gridsperpage)
+    elif page < 1:
+        page = 1
+    for grid in grids[gridsperpage*(page-1):gridsperpage*page]:
         if is_allowed(interaction.user.id,3):
             usable_grid_data[grid['EntityId']]={'Name: ': grid['DisplayName'], 'Size: ': grid['GridSize'], 'Blocks: ': grid['BlocksCount'], 'Owner: ': grid['OwnerDisplayName'],'ID: ':grid['EntityId']}
         else:
@@ -88,13 +122,17 @@ async def grids(interaction:discord.ui.text_input):
 
     sendmessage = ''
     for grid in usable_grid_data:
+        tempsendmessage=''
         for value in usable_grid_data[grid]:
-            sendmessage += f'{value}{usable_grid_data[grid][value]}\n'
-        sendmessage += '\n'
+            tempsendmessage += f'{value}{usable_grid_data[grid][value]}\n'
+        if len(sendmessage+f'{tempsendmessage}\n') < 4096:
+            sendmessage += f'{tempsendmessage}\n'
+
     if sendmessage == '':
         sendmessage = 'No Grids'
 
-    await interaction.response.send_message(embed=discord.Embed(title='Grids', description=sendmessage))
+    title = f'Grids:({len(usable_grid_data)}/{len(grids)}) Page:({page}/{ceil(len(grids)/gridsperpage)})'
+    await interaction.edit_original_response(embed=discord.Embed(title=title, description=sendmessage))
 
 async def ch_pr():
     await client.wait_until_ready()
@@ -113,11 +151,9 @@ async def ch_pr():
             presence = 'Server Offline'
 
         if presence != 'Server Offline':
-            online_players = 0
             current_players = []
             for player in players:
                 if player['Ping'] != -1:
-                    online_players += 1
                     current_players.append(player['DisplayName'])
                     if player['DisplayName'] not in player_names:
                         player_names.append(player['DisplayName'])
@@ -127,9 +163,8 @@ async def ch_pr():
                 if name not in current_players:
                     await client.get_channel(settings['channelID']).send(embed=discord.Embed(color=0xff0000, description=f'{name} has disconnected'))
                     player_names.remove(name)
-                    online_players -= 1
                     
-            presence = f'{online_players} Players Online'
+            presence = f'{(len(current_players))} Players Online'
         await client.change_presence(activity=discord.Game(name=presence))
         await asyncio.sleep(60)
 
