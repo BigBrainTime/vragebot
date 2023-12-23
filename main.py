@@ -104,6 +104,14 @@ async def players(interaction:discord.ui.text_input):
 
     await interaction.response.send_message(embed=discord.Embed(title='Players', description=sendmessage))
 
+@tree.command(name="delgrid", description="Delete Grid", guild=discord.Object(id=settings["serverID"]))
+async def delgrid(interaction:discord.ui.text_input,id:str):
+    if not is_allowed(interaction.user.id, 2):
+        return await interaction.response.send_message(embed=discord.Embed(title='Del Grid', description='Acces Denied'))
+    
+    api.delete_grid(id)
+    await interaction.response.send_message(embed=discord.Embed(title='Del Grid', description='Grid Deleted'))
+
 gridsperpage = 5
 @tree.command(name="grids", description="Grid List", guild=discord.Object(id=settings["serverID"]))
 async def grids(interaction:discord.ui.text_input,page:int):
@@ -115,7 +123,7 @@ async def grids(interaction:discord.ui.text_input,page:int):
     elif page < 1:
         page = 1
     for grid in grids[gridsperpage*(page-1):gridsperpage*page]:
-        if is_allowed(interaction.user.id,3):
+        if is_allowed(interaction.user.id,2):
             usable_grid_data[grid['EntityId']]={'Name: ': grid['DisplayName'], 'Size: ': grid['GridSize'], 'Blocks: ': grid['BlocksCount'], 'Owner: ': grid['OwnerDisplayName'],'ID: ':grid['EntityId']}
         else:
             usable_grid_data[grid['EntityId']]={'Name: ':grid['DisplayName'],'Size: ':grid['GridSize'],'Blocks: ':grid['BlocksCount'],'Owner: ':grid['OwnerDisplayName']}
