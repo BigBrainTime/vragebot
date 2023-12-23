@@ -59,7 +59,7 @@ async def on_message(message):
 
 @tree.command(name = "stop", description = "stop_server", guild=discord.Object(id=settings["serverID"]))
 async def stop(interaction:discord.ui.text_input):
-    if is_allowed(interaction.user.id,3):
+    if is_allowed(interaction.user.id,4):
         api.stop_server()
         await interaction.response.send_message(embed=discord.Embed(title='Stop', description='Server Stopped - Contact Owner for reboot'))
     else:
