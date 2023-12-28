@@ -4,3 +4,4 @@ channel.txt
 url.txt
 settings.txt
 Projects/
+*.pyc
